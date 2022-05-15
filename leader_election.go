@@ -18,8 +18,6 @@ const (
 
 var _ Election = (*concurrency.Election)(nil)
 
-type newElectionFunc func(s *concurrency.Session, pfx string) Election
-
 type Election interface {
 	Campaign(ctx context.Context, val string) error
 	Resign(ctx context.Context) (err error)
@@ -34,7 +32,6 @@ type LeadershipEventsWatcher interface {
 }
 
 type LeaderElection struct {
-	newElectionFunc         newElectionFunc
 	etcdClient              Client
 	election                Election
 	logger                  *zap.Logger
@@ -49,9 +46,6 @@ type LeaderElection struct {
 func NewLeaderElection(etcdClient Client, logger *zap.Logger, instanceName string, leadershipEventsWatcher LeadershipEventsWatcher) *LeaderElection {
 
 	return &LeaderElection{
-		newElectionFunc: func(s *concurrency.Session, pfx string) Election {
-			return concurrency.NewElection(s, pfx)
-		},
 		etcdClient:              etcdClient,
 		logger:                  logger,
 		instanceName:            instanceName,
@@ -64,7 +58,7 @@ func NewLeaderElection(etcdClient Client, logger *zap.Logger, instanceName strin
 // If there is already a leader, it will become a follower and participate in the election process.
 // If there is no leader, it will start the election process.
 func (l *LeaderElection) Start(ctx context.Context) error {
-	l.election = l.newElectionFunc(l.etcdClient.Session(), _electionPrefix)
+	l.election = concurrency.NewElection(l.etcdClient.Session(), _electionPrefix)
 
 	go l.observeChanges(ctx)
 
@@ -136,7 +130,7 @@ func (l *LeaderElection) processEvent(event clientv3.GetResponse) {
 
 	l.logger.Info("received a new leadership event", zap.String("key", key), zap.String("leader", leader))
 
-	// skip reporting if the leader is the current instance as it will be reported by onGaindLeadership
+	// skip reporting if the leader is the current instance as it will be reported by onGainedLeadership
 	if leader == l.instanceName {
 		return
 	}
