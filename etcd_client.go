@@ -27,7 +27,6 @@ type Client interface {
 	clientv3.KV
 	clientv3.Watcher
 	io.Closer
-	WatchAndPrintEvents(ctx context.Context, key string, opts ...clientv3.OpOption) error
 	Lock(ctx context.Context, lockName string) (func(ctx context.Context) error, error)
 	Session() *concurrency.Session
 }
@@ -40,8 +39,7 @@ type client struct {
 }
 
 func (c *client) RequestProgress(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	return c.etcdClient.RequestProgress(ctx)
 }
 
 func New(logger *zap.Logger) (Client, error) {
