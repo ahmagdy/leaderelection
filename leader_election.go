@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.uber.org/zap"
 )
@@ -32,7 +31,7 @@ type LeadershipEventsWatcher interface {
 }
 
 type LeaderElection struct {
-	etcdClient              Client
+	etcdSession             *concurrency.Session
 	election                Election
 	logger                  *zap.Logger
 	leadershipEventsWatcher LeadershipEventsWatcher
@@ -43,22 +42,26 @@ type LeaderElection struct {
 	currentLeader string // protected by mux
 }
 
-func NewLeaderElection(etcdClient Client, logger *zap.Logger, instanceName string, leadershipEventsWatcher LeadershipEventsWatcher) *LeaderElection {
+func NewLeaderElection(etcdClient *clientv3.Client, logger *zap.Logger, instanceName string, leadershipEventsWatcher LeadershipEventsWatcher) (*LeaderElection, error) {
+	etcdSession, err := concurrency.NewSession(etcdClient, concurrency.WithTTL(1 /* second */))
+	if err != nil {
+		return nil, err
+	}
 
 	return &LeaderElection{
-		etcdClient:              etcdClient,
+		etcdSession:             etcdSession,
 		logger:                  logger,
 		instanceName:            instanceName,
 		watcherExitChan:         make(chan struct{}),
 		leadershipEventsWatcher: leadershipEventsWatcher,
-	}
+	}, nil
 }
 
 // Start starts the leader election process.
 // If there is already a leader, it will become a follower and participate in the election process.
 // If there is no leader, it will start the election process.
 func (l *LeaderElection) Start(ctx context.Context) error {
-	l.election = concurrency.NewElection(l.etcdClient.Session(), _electionPrefix)
+	l.election = concurrency.NewElection(l.etcdSession, _electionPrefix)
 
 	go l.observeChanges(ctx)
 
@@ -90,11 +93,20 @@ func (l *LeaderElection) Stop(ctx context.Context) error {
 		return nil
 	}
 
-	err := l.election.Resign(ctx)
+	err := l.Resign(ctx)
 
-	<-l.watcherExitChan
+	//<-l.watcherExitChan
 	l.election = nil
 	return err
+}
+
+// Resign Lets the leader abdicate its leadership
+func (l *LeaderElection) Resign(ctx context.Context) error {
+	if !l.isCurrentInstanceLeader() {
+		return nil
+	}
+
+	return l.election.Resign(ctx)
 }
 
 // If the instance is not the leader it will participate,
@@ -137,7 +149,7 @@ func (l *LeaderElection) processEvent(event clientv3.GetResponse) {
 
 	l.mux.Lock()
 	defer l.mux.Unlock()
-	if l.currentLeader == l.instanceName {
+	if l.isCurrentInstanceLeader() {
 		l.currentLeader = leader
 		l.logger.Info("lost leadership", zap.String("leader", leader))
 		l.onLostLeadership()
@@ -155,4 +167,8 @@ func (l *LeaderElection) onLostLeadership() {
 	if l.leadershipEventsWatcher != nil {
 		l.leadershipEventsWatcher.OnLostLeadership()
 	}
+}
+
+func (l *LeaderElection) isCurrentInstanceLeader() bool {
+	return l.currentLeader == l.instanceName
 }
