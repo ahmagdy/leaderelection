@@ -8,10 +8,10 @@ go get -u github.com/ahmagdy/leaderelection
 ```
 
 ### Use case:
-This package is intended to be used when there are multiple instances running of a service and only a single instance can be the leader, or a single instance can do a specific job.
+This package is intended to be used when multiple instances are running of service, and only a single instance can be the leader, or a single instance can do a specific job.
 
 ### Example:
-It's mostly intended for services build on top of a framework that supports app lifecycle. e.g. [Uber fx](https://github.com/uber-go/fx).
+It's mostly intended for services built on top of a framework that supports app lifecycle. e.g. [Uber fx](https://github.com/uber-go/fx).
 ```go
 leaderElection := leaderelection.New(etcdClient, zapLogger, instanceName, watcher)
 
@@ -57,7 +57,7 @@ func run(ctx context.Context, logger *zap.Logger, instanceName string) error {
 #### Watcher interface to act on leadership changes
 I tried to keep the interface minimal without fancy options.
 
-If you feel like it's missing an event or can be extended, feel free to contribute or open a ticket.
+Feel free to contribute or open a ticket if you feel like it's missing an event or can be extended.
 
 ```go
 var _ leaderelection.EventsWatcher = (*WatcherService)(nil)
@@ -76,7 +76,7 @@ func (w *WatcherService) OnLostLeadership() {
 
 ```
 
-Please check /example package for more go examples.
+Please check the `/example` package for more go examples.
 
 ## License:
 [Apache License 2.0](https://github.com/ahmagdy/leaderelection/blob/main/LICENSE)
