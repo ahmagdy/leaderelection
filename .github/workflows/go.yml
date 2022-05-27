@@ -18,9 +18,12 @@ jobs:
       with:
         go-version: 1.18
 
+    - name: Install mockgen
+      run: |
+        go install github.com/golang/mock/mockgen
+
     - name: Generate Mocks
       run: |
-        go get github.com/golang/mock/mockgen@v1.6.0
         make mockgen
           
     - name: Build
