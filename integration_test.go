@@ -61,8 +61,7 @@ func Test_Leadership(t *testing.T) {
 	})
 
 	t.Run("when a new participant joins, and the leader is healthy, no new election occurs", func(t *testing.T) {
-		fooCtx, fooCancel := context.WithCancel(context.Background())
-		barCtx, barCancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(context.Background())
 		ctrl := gomock.NewController(t)
 		logger := zaptest.NewLogger(t)
 		e := &Embedded{logger: logger}
@@ -70,21 +69,19 @@ func Test_Leadership(t *testing.T) {
 		barLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
 		e.Start(t)
 		t.Cleanup(func() {
-			e.CleanDs()
 			e.Stop()
-			barCancel()
-			fooCancel()
+			cancel()
 		})
 
 		fooLeadershipEventsWatcher.EXPECT().OnGainedLeadership()
 
 		fooSvcLeaderElection, err := New(e.Client(), logger, _fooInstance, fooLeadershipEventsWatcher)
 		require.NoError(t, err)
-		require.NoError(t, fooSvcLeaderElection.Start(fooCtx))
+		require.NoError(t, fooSvcLeaderElection.Start(ctx))
 
 		barSvcLeaderElection, err := New(e.Client(), logger, _barInstance, barLeadershipEventsWatcher)
 		require.NoError(t, err)
-		require.NoError(t, barSvcLeaderElection.Start(barCtx))
+		require.NoError(t, barSvcLeaderElection.Start(ctx))
 	})
 
 	t.Run("when the leader stops, a new leader from the participants gets elected", func(t *testing.T) {
