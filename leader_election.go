@@ -15,16 +15,6 @@ const (
 	_electionPrefix = "/leader-election"
 )
 
-var _ Election = (*concurrency.Election)(nil)
-
-type Election interface {
-	Campaign(ctx context.Context, val string) error
-	Resign(ctx context.Context) (err error)
-	Proclaim(ctx context.Context, val string) error
-	Leader(ctx context.Context) (*clientv3.GetResponse, error)
-	Observe(ctx context.Context) <-chan clientv3.GetResponse
-}
-
 type EventsWatcher interface {
 	OnGainedLeadership()
 	OnLostLeadership()
@@ -32,7 +22,7 @@ type EventsWatcher interface {
 
 type Service struct {
 	etcdSession             *concurrency.Session
-	election                Election
+	election                *concurrency.Election
 	logger                  *zap.Logger
 	leadershipEventsWatcher EventsWatcher
 	instanceName            string
