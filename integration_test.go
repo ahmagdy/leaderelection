@@ -1,8 +1,8 @@
-package main
+package leaderelection
 
 import (
 	"context"
-	mock_main "github.com/ahmagdy/etcd-leaderelection/mocks"
+	mock_main "github.com/ahmagdy/leaderelection/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m, opts...)
 }
 
-func Test_Foo(t *testing.T) {
+func Test_Leadership(t *testing.T) {
 	const _fooInstance = "foo"
 	const _barInstance = "bar"
 
@@ -55,7 +55,7 @@ func Test_Foo(t *testing.T) {
 			cancel()
 		})
 
-		leaderElection, err := NewLeaderElection(e.Client(), logger, _fooInstance, leadershipEventsWatcher)
+		leaderElection, err := New(e.Client(), logger, _fooInstance, leadershipEventsWatcher)
 		require.NoError(t, err)
 		require.NoError(t, leaderElection.Start(ctx))
 	})
@@ -76,11 +76,11 @@ func Test_Foo(t *testing.T) {
 
 		fooLeadershipEventsWatcher.EXPECT().OnGainedLeadership()
 
-		fooSvcLeaderElection, err := NewLeaderElection(e.Client(), logger, _fooInstance, fooLeadershipEventsWatcher)
+		fooSvcLeaderElection, err := New(e.Client(), logger, _fooInstance, fooLeadershipEventsWatcher)
 		require.NoError(t, err)
 		require.NoError(t, fooSvcLeaderElection.Start(ctx))
 
-		barSvcLeaderElection, err := NewLeaderElection(e.Client(), logger, _barInstance, barLeadershipEventsWatcher)
+		barSvcLeaderElection, err := New(e.Client(), logger, _barInstance, barLeadershipEventsWatcher)
 		require.NoError(t, err)
 		require.NoError(t, barSvcLeaderElection.Start(ctx))
 	})
@@ -105,11 +105,11 @@ func Test_Foo(t *testing.T) {
 		fooLeadershipEventsWatcher.EXPECT().OnLostLeadership().Do(func() { wait <- struct{}{} })
 		barLeadershipEventsWatcher.EXPECT().OnGainedLeadership().Do(func() { wait <- struct{}{} })
 
-		fooSvcLeaderElection, err := NewLeaderElection(e.Client(), logger, _fooInstance, fooLeadershipEventsWatcher)
+		fooSvcLeaderElection, err := New(e.Client(), logger, _fooInstance, fooLeadershipEventsWatcher)
 		require.NoError(t, err)
 		require.NoError(t, fooSvcLeaderElection.Start(ctx))
 
-		barSvcLeaderElection, err := NewLeaderElection(e.Client(), logger, _barInstance, barLeadershipEventsWatcher)
+		barSvcLeaderElection, err := New(e.Client(), logger, _barInstance, barLeadershipEventsWatcher)
 		require.NoError(t, err)
 		require.NoError(t, barSvcLeaderElection.Start(ctx))
 
@@ -143,11 +143,11 @@ func Test_Foo(t *testing.T) {
 		barLeadershipEventsWatcher.EXPECT().OnGainedLeadership().Do(func() { wait <- struct{}{} })
 
 		// assert
-		fooSvcLeaderElection, err := NewLeaderElection(e.Client(), logger, _fooInstance, fooLeadershipEventsWatcher)
+		fooSvcLeaderElection, err := New(e.Client(), logger, _fooInstance, fooLeadershipEventsWatcher)
 		require.NoError(t, err)
 		require.NoError(t, fooSvcLeaderElection.Start(ctx))
 
-		barSvcLeaderElection, err := NewLeaderElection(e.Client(), logger, _barInstance, barLeadershipEventsWatcher)
+		barSvcLeaderElection, err := New(e.Client(), logger, _barInstance, barLeadershipEventsWatcher)
 		require.NoError(t, err)
 		require.NoError(t, barSvcLeaderElection.Start(ctx))
 

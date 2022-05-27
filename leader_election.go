@@ -1,4 +1,4 @@
-package main
+package leaderelection
 
 import (
 	"context"
@@ -25,16 +25,16 @@ type Election interface {
 	Observe(ctx context.Context) <-chan clientv3.GetResponse
 }
 
-type LeadershipEventsWatcher interface {
+type EventsWatcher interface {
 	OnGainedLeadership()
 	OnLostLeadership()
 }
 
-type LeaderElection struct {
+type Service struct {
 	etcdSession             *concurrency.Session
 	election                Election
 	logger                  *zap.Logger
-	leadershipEventsWatcher LeadershipEventsWatcher
+	leadershipEventsWatcher EventsWatcher
 	instanceName            string
 	watcherExitChan         chan struct{}
 
@@ -42,13 +42,13 @@ type LeaderElection struct {
 	currentLeader string // protected by mux
 }
 
-func NewLeaderElection(etcdClient *clientv3.Client, logger *zap.Logger, instanceName string, leadershipEventsWatcher LeadershipEventsWatcher) (*LeaderElection, error) {
+func New(etcdClient *clientv3.Client, logger *zap.Logger, instanceName string, leadershipEventsWatcher EventsWatcher) (*Service, error) {
 	etcdSession, err := concurrency.NewSession(etcdClient, concurrency.WithTTL(1 /* second */))
 	if err != nil {
 		return nil, err
 	}
 
-	return &LeaderElection{
+	return &Service{
 		etcdSession:             etcdSession,
 		logger:                  logger,
 		instanceName:            instanceName,
@@ -60,7 +60,7 @@ func NewLeaderElection(etcdClient *clientv3.Client, logger *zap.Logger, instance
 // Start starts the leader election process.
 // If there is already a leader, it will become a follower and participate in the election process.
 // If there is no leader, it will start the election process.
-func (l *LeaderElection) Start(ctx context.Context) error {
+func (l *Service) Start(ctx context.Context) error {
 	l.election = concurrency.NewElection(l.etcdSession, _electionPrefix)
 
 	go l.observeChanges(ctx)
@@ -88,7 +88,7 @@ func (l *LeaderElection) Start(ctx context.Context) error {
 }
 
 // Stop stops the leader election process.
-func (l *LeaderElection) Stop(ctx context.Context) error {
+func (l *Service) Stop(ctx context.Context) error {
 	if l.election == nil {
 		return nil
 	}
@@ -101,7 +101,7 @@ func (l *LeaderElection) Stop(ctx context.Context) error {
 }
 
 // Resign Lets the leader abdicate its leadership
-func (l *LeaderElection) Resign(ctx context.Context) error {
+func (l *Service) Resign(ctx context.Context) error {
 	if !l.isCurrentInstanceLeader() {
 		return nil
 	}
@@ -111,7 +111,7 @@ func (l *LeaderElection) Resign(ctx context.Context) error {
 
 // If the instance is not the leader it will participate,
 // so the instance can potentially become the leader once the existing leader resigns
-func (l *LeaderElection) campaign(ctx context.Context) {
+func (l *Service) campaign(ctx context.Context) {
 	if err := l.election.Campaign(ctx, l.instanceName); err != nil {
 		l.logger.Error("failed to campaign", zap.Error(err))
 		return
@@ -121,12 +121,12 @@ func (l *LeaderElection) campaign(ctx context.Context) {
 	defer l.mux.Unlock()
 	l.currentLeader = l.instanceName
 
-	l.onGainedLeadership()
+	l.leadershipEventsWatcher.OnGainedLeadership()
 
 	l.logger.Info("look at me, i'm the boss now")
 }
 
-func (l *LeaderElection) observeChanges(ctx context.Context) {
+func (l *Service) observeChanges(ctx context.Context) {
 	// observe reports when the leader is changed
 	eventsChan := l.election.Observe(ctx)
 	for event := range eventsChan {
@@ -136,7 +136,12 @@ func (l *LeaderElection) observeChanges(ctx context.Context) {
 	close(l.watcherExitChan)
 }
 
-func (l *LeaderElection) processEvent(event clientv3.GetResponse) {
+func (l *Service) processEvent(event clientv3.GetResponse) {
+	if len(event.Kvs) == 0 {
+		l.logger.Warn("received election event with no keys", zap.Any("headers", event.Header))
+		return
+	}
+
 	key := string(event.Kvs[0].Key)
 	leader := string(event.Kvs[0].Value)
 
@@ -152,23 +157,11 @@ func (l *LeaderElection) processEvent(event clientv3.GetResponse) {
 	if l.isCurrentInstanceLeader() {
 		l.currentLeader = leader
 		l.logger.Info("lost leadership", zap.String("leader", leader))
-		l.onLostLeadership()
-	}
-
-}
-
-func (l *LeaderElection) onGainedLeadership() {
-	if l.leadershipEventsWatcher != nil {
-		l.leadershipEventsWatcher.OnGainedLeadership()
-	}
-}
-
-func (l *LeaderElection) onLostLeadership() {
-	if l.leadershipEventsWatcher != nil {
 		l.leadershipEventsWatcher.OnLostLeadership()
 	}
+
 }
 
-func (l *LeaderElection) isCurrentInstanceLeader() bool {
+func (l *Service) isCurrentInstanceLeader() bool {
 	return l.currentLeader == l.instanceName
 }

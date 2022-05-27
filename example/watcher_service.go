@@ -1,8 +1,11 @@
 package main
 
-import "go.uber.org/zap"
+import (
+	"github.com/ahmagdy/leaderelection"
+	"go.uber.org/zap"
+)
 
-var _ LeadershipEventsWatcher = (*WatcherService)(nil)
+var _ leaderelection.EventsWatcher = (*WatcherService)(nil)
 
 type WatcherService struct {
 	logger *zap.Logger
