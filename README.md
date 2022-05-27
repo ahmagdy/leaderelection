@@ -14,6 +14,7 @@ This package is intended to be used when there are multiple instances running of
 It's mostly intended for services build on top of a framework that supports app lifecycle. e.g. [Uber fx](https://github.com/uber-go/fx).
 ```go
 leaderElection := leaderelection.New(etcdClient, zapLogger, instanceName, watcher)
+
 fx.Invoke(func(lc fx.Lifecycle) {
     lc.Append(fx.Hook{
         OnStart: func(context.Context) error { return leaderElection.Start(ctx) },
@@ -47,7 +48,6 @@ func run(ctx context.Context, logger *zap.Logger, instanceName string) error {
 			logger.Error("failed to stop leader election", zap.Error(err))
 		}
 	}()
-
 	
 }
 
