@@ -53,6 +53,29 @@ func run(ctx context.Context, logger *zap.Logger, instanceName string) error {
 
 ```
 
+
+#### Watcher interface to act on leadership changes
+I tried to keep the interface minimal without fancy options.
+
+If you feel like it's missing an event or can be extended, feel free to contribute or open a ticket.
+
+```go
+var _ leaderelection.EventsWatcher = (*WatcherService)(nil)
+
+type WatcherService struct {
+	logger *zap.Logger
+}
+
+func (w *WatcherService) OnGainedLeadership() {
+	w.logger.Info("I am the new leader")
+}
+
+func (w *WatcherService) OnLostLeadership() {
+	w.logger.Info("I am no longer the leader")
+}
+
+```
+
 Please check /example package for more go examples.
 
 ## License:
