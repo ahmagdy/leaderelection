@@ -70,7 +70,6 @@ func Test_Leadership(t *testing.T) {
 		e.Start(t)
 		t.Cleanup(func() {
 			e.Stop()
-			//e.CleanDs()
 			cancel()
 		})
 
