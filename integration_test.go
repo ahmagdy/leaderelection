@@ -2,7 +2,7 @@ package leaderelection
 
 import (
 	"context"
-	mock_main "github.com/ahmagdy/leaderelection/mocks"
+	mockleaderelection "github.com/ahmagdy/leaderelection/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -45,7 +45,7 @@ func Test_Leadership(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		e := &Embedded{logger: logger}
 
-		leadershipEventsWatcher := mock_main.NewMockLeadershipEventsWatcher(ctrl)
+		leadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
 		leadershipEventsWatcher.EXPECT().OnGainedLeadership()
 
 		e.Start(t)
@@ -65,8 +65,8 @@ func Test_Leadership(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		logger := zaptest.NewLogger(t)
 		e := &Embedded{logger: logger}
-		fooLeadershipEventsWatcher := mock_main.NewMockLeadershipEventsWatcher(ctrl)
-		barLeadershipEventsWatcher := mock_main.NewMockLeadershipEventsWatcher(ctrl)
+		fooLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
+		barLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
 		e.Start(t)
 		t.Cleanup(func() {
 			e.CleanDs()
@@ -92,8 +92,8 @@ func Test_Leadership(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		wait := make(chan struct{}, 2)
 		e := &Embedded{logger: logger}
-		fooLeadershipEventsWatcher := mock_main.NewMockLeadershipEventsWatcher(ctrl)
-		barLeadershipEventsWatcher := mock_main.NewMockLeadershipEventsWatcher(ctrl)
+		fooLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
+		barLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
 		e.Start(t)
 		t.Cleanup(func() {
 			e.CleanDs()
@@ -127,8 +127,8 @@ func Test_Leadership(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		wait := make(chan struct{}, 2)
 		e := &Embedded{logger: logger}
-		fooLeadershipEventsWatcher := mock_main.NewMockLeadershipEventsWatcher(ctrl)
-		barLeadershipEventsWatcher := mock_main.NewMockLeadershipEventsWatcher(ctrl)
+		fooLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
+		barLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
 
 		e.Start(t)
 		t.Cleanup(func() {
