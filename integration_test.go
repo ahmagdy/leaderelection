@@ -70,10 +70,11 @@ func Test_Leadership(t *testing.T) {
 		barLeadershipEventsWatcher := mockleaderelection.NewMockEventsWatcher(ctrl)
 		e.Start(t)
 		t.Cleanup(func() {
-			e.CleanDs()
-			e.Stop()
 			barCancel()
 			fooCancel()
+
+			e.CleanDs()
+			e.Stop()
 		})
 
 		fooLeadershipEventsWatcher.EXPECT().OnGainedLeadership()
